@@ -11,7 +11,9 @@ const passportLocalMongoose = require("passport-local-mongoose");
 const app = express();
 const db = mongoose.connection;
 
-app.set("view engine", "ejs");
+// fathomless-escarpment-61034.herokuapp.com/
+
+https: app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -253,7 +255,11 @@ app.get("/api/logout", (req, res) => {
 });
 
 //connect with server
-const port = 5000;
+let port = process.env.PORT;
+if (port == null || port == "") {
+  port = 5000;
+}
+
 app.listen(port, (err) => {
   if (err) {
     console.log("some error!!!!!!!!");
