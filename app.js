@@ -16,7 +16,7 @@ const db = mongoose.connection;
 
 app.set("view engine", "ejs");
 app.use(cors());
-app.use(express.static("./uploads"));
+app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(
@@ -46,7 +46,10 @@ const userSchema = new mongoose.Schema({
 const userProfileSchema = new mongoose.Schema({
   name: String,
   about: String,
-  userImg: String,
+  userImg: {
+    data: Buffer,
+    contentType: String,
+  },
   date: Date,
   user: userSchema,
 });
@@ -59,7 +62,10 @@ const Tpo = mongoose.model("Tpo", typeOfPicSchema);
 const postSchema = new mongoose.Schema({
   name: String,
   desc: String,
-  img: String,
+  img: {
+    data: Buffer,
+    contentType: String,
+  },
   date: Date,
   schematype: typeOfPicSchema,
   creatUser: userSchema,
@@ -81,15 +87,10 @@ db.once("open", function () {
 
 let storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "./uploads");
+    cb(null, "uploads");
   },
   filename: (req, file, cb) => {
-    cb(
-      null,
-      `${req.file.fieldname}-${Date.now()}${path.extname(
-        req.file.originalname
-      )}`
-    );
+    cb(null, file.fieldname + "-" + Date.now());
   },
 });
 
@@ -114,11 +115,17 @@ app.get("/api/posts/", (req, res) => {
 
 //genarating posts POST request
 app.post("/api/posts/", upload.single("image"), (req, res, next) => {
+  console.log(req.user);
   if (req.isAuthenticated()) {
     let obj = {
       name: req.body.name,
       desc: req.body.pesc,
-      img: req.body.image,
+      img: {
+        data: fs.readFileSync(
+          path.join(__dirname + "/uploads/" + req.file.filename)
+        ),
+        contentType: "image/png",
+      },
       creatUser: req.user,
     };
     Pic.create(obj, (err, item) => {
@@ -145,7 +152,12 @@ app.put("/api/posts/:postId", upload.single("image"), (req, res) => {
       let obj = {
         name: req.body.name,
         desc: req.body.pesc,
-        img: req.body.image,
+        img: {
+          data: fs.readFileSync(
+            path.join(__dirname + "/uploads/" + req.file.filename)
+          ),
+          contentType: "image/png",
+        },
         creatUser: req.user,
       };
       Pic.findOneAndUpdate(id, obj, (err, item) => {
@@ -178,11 +190,9 @@ app.delete("/api/posts/:postId", function (req, res) {
 
 //sign up or registrations
 app.post("/api/registration", upload.single("image"), (req, res) => {
-  console.log(req.body.image);
-
   let Name = req.body.name;
   let Des = req.body.description;
-  let Img = req.body.image;
+  let Img = req.file.filename;
 
   User.register(
     { username: req.body.username },
@@ -195,7 +205,10 @@ app.post("/api/registration", upload.single("image"), (req, res) => {
           let newUserProfile = {
             name: Name,
             about: Des,
-            userImg: Img,
+            userImg: {
+              data: fs.readFileSync(path.join(__dirname + "/uploads/" + Img)),
+              contentType: "image/png",
+            },
             date: Date.now(),
             user: user,
           };
@@ -243,14 +256,6 @@ app.get("/api/logout", (req, res) => {
   }
 });
 
-//current login user
-app.get("/api/currentloginuser", (req, res) => {
-  if (req.isAuthenticated()) {
-    res.status(200).json({ user: req.user });
-  } else {
-    res.status(200).json({ user: null });
-  }
-});
 //connect with server
 let port = process.env.PORT;
 if (port == null || port == "") {
